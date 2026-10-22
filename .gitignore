@@ -1,0 +1,9 @@
+# 本地工具与记忆
+.workbuddy/
+node_modules/
+
+# 系统垃圾
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log

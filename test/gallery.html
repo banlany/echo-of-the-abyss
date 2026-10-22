@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>像素贴图一览</title>
+<style>
+  html,body{margin:0;background:#1a1410;color:#e9dcc0;font-family:Georgia,serif}
+  canvas{display:block;image-rendering:pixelated}
+  h3{margin:0;padding:14px 20px 0;font-size:13px;letter-spacing:.2em;color:#9c8763;font-weight:400}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script src="../js/core/rng.js"></script>
+<script src="../js/data/pixelart-actors.js"></script>
+<script src="../js/data/pixelart-items.js"></script>
+<script src="../js/data/pixelart-ground.js"></script>
+<script src="../js/render/pixels.js"></script>
+<script>
+(function () {
+  const SC = 5;          // 每个像素放大倍数
+  const PAD = 10;
+  const SECTIONS = [
+    { title: '怪物', names: ['grunt','runner','swarm','brute','spitter','bomber','splitter','wraith','jugger','charger'] },
+    { title: '角色', names: ['rayn','vera','kai','grom','nyx','aela'] },
+    { title: '武器', names: ['sword','hammer','bow','staff','dagger','blade','flame','bolt','frost','boomerang'] },
+    { title: '防具', names: ['armor','leather','robe','vest','scale'] },
+    { title: '饰品', names: ['amulet','boot','eye','ring','magnet','dice','hourglass','mask','turtle','badge'] },
+    { title: '地表装饰', names: ['d_rock','d_bones','d_grass','d_mush','d_crack','d_skull'] },
+  ];
+
+  const cv = document.getElementById('c');
+  const ctx = cv.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  // 布局：每个分区内每行最多 8 个
+  const PER_ROW = 8;
+  let y = 0;
+  const plan = [];
+  for (const sec of SECTIONS) {
+    const cellH = Math.max(...sec.names.map(n => (RG.PIXEL_ART[n] ? RG.PIXEL_ART[n].h : 16))) * SC + 26;
+    const rows = Math.ceil(sec.names.length / PER_ROW);
+    plan.push({ sec, y, cellH, rows });
+    y += 20 + rows * cellH + 10;
+  }
+  const W = 940;
+  cv.width = W;
+  cv.height = y + 10;
+  cv.style.width = W + 'px';
+  cv.style.height = (y + 10) + 'px';
+
+  ctx.fillStyle = '#1a1410';
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.textBaseline = 'alphabetic';
+
+  for (const p of plan) {
+    ctx.fillStyle = '#9c8763';
+    ctx.font = '13px Georgia, serif';
+    ctx.fillText(p.sec.title, 16, p.y + 14);
+
+    p.sec.names.forEach((name, i) => {
+      const spr = RG.pixel.sprite(name);
+      if (!spr) return;
+      const col = i % PER_ROW;
+      const row = Math.floor(i / PER_ROW);
+      const x = 16 + col * 114;
+      const top = p.y + 22 + row * p.cellH;
+      const w = spr.width * SC, h = spr.height * SC;
+      ctx.fillStyle = 'rgba(255,255,255,.045)';
+      ctx.fillRect(x - 3, top - 3, w + 6, h + 6);
+      ctx.drawImage(spr, x, top, w, h);
+      ctx.fillStyle = '#6b5b45';
+      ctx.font = '10px monospace';
+      ctx.fillText(name, x, top + h + 12);
+    });
+  }
+})();
+</script>
+</body>
+</html>

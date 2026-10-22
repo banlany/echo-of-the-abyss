@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<title>深渊回响 · Echoes of the Abyss</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div id="app">
+  <canvas id="cv"></canvas>
+
+  <!-- ======================= HUD ======================= -->
+  <div id="hud" class="hidden">
+    <!-- 左上：生命 -->
+    <div class="hud-panel hero-panel">
+      <div class="avatar" id="avatarBox"><span id="avatarGlyph">剑</span></div>
+      <div class="bars">
+        <div class="bar hp-bar">
+          <i id="hpFill"></i>
+          <span id="hpText">100 / 100</span>
+        </div>
+        <div class="bar xp-bar">
+          <i id="xpFill"></i>
+          <span id="xpText">Lv.1</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 中上：波次 -->
+    <div class="hud-panel wave-panel">
+      <div class="wave-line">
+        <span class="wlabel">WAVE</span>
+        <b id="waveNum">1</b>
+      </div>
+      <div class="wave-timer" id="waveTimer">45.0</div>
+      <div class="kill-line">击杀 <b id="killNum">0</b></div>
+    </div>
+
+    <!-- 右上：金币 -->
+    <div class="hud-panel gold-panel">
+      <span class="coin">◈</span>
+      <b id="goldNum">0</b>
+    </div>
+
+    <!-- 左下：佩戴位 + 背包 + 羁绊 -->
+    <div class="hud-left-bottom">
+      <div class="worn-line">
+        <div class="worn-bar" id="wornBar"></div>
+        <button class="bag-toggle" id="bagToggle">
+          <span class="bag-glyph">▤</span>
+          <span class="bag-label">背包</span>
+          <b id="bagCount">0/12</b>
+        </button>
+      </div>
+      <div class="bond-bar" id="bondBar"></div>
+    </div>
+
+    <!-- 右下 -->
+    <div class="hud-right-bottom">
+      <div class="dash-box" id="dashBox">
+        <div class="dash-fill" id="dashFill"></div>
+        <div class="dash-label">冲刺</div>
+      </div>
+      <div class="stat-list" id="statList"></div>
+    </div>
+  </div>
+
+  <!-- ======================= 标题 / 选人 ======================= -->
+  <div id="screen-title" class="screen show">
+    <div class="title-scroll">
+      <div class="scroll-top"></div>
+      <div class="scroll-body">
+        <div class="title-block">
+          <div class="title-mark">✦</div>
+          <h1>深渊回响</h1>
+          <div class="title-en">ECHOES OF THE ABYSS</div>
+          <div class="title-sub">无限波次 · 装备羁绊 · 一命通关的割草狂欢</div>
+        </div>
+
+        <div class="section-label">选择你的屠夫</div>
+        <div class="char-select" id="charSelect"></div>
+
+        <div class="title-actions">
+          <button class="btn primary big" id="btnStart">进 入 深 渊</button>
+        </div>
+        <div class="hint-line">
+          <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移动 &nbsp;·&nbsp;
+          <kbd>鼠标</kbd> 瞄准 &nbsp;·&nbsp; <kbd>空格</kbd> 冲刺 &nbsp;·&nbsp;
+          <kbd>Tab</kbd> 背包 &nbsp;·&nbsp; <kbd>Esc</kbd> 暂停
+        </div>
+      </div>
+      <div class="scroll-bottom"></div>
+    </div>
+  </div>
+
+  <!-- ======================= 升级三选一 ======================= -->
+  <div id="screen-levelup" class="screen">
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title"><span class="lvl-badge" id="lvlBadge">2</span> 等级提升</div>
+        <div class="panel-sub">从深渊的馈赠中挑选一项</div>
+        <div class="rule"><span>❦</span></div>
+      </div>
+      <div class="cards" id="perkCards"></div>
+      <div class="panel-foot">
+        <button class="btn ghost" id="btnRerollPerk">重掷 · <span class="coin">◈</span><b id="perkRerollCost">25</b></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================= 商店 ======================= -->
+  <div id="screen-shop" class="screen">
+    <div class="panel shop-panel">
+      <div class="panel-head">
+        <div class="panel-title">黑 市</div>
+        <div class="panel-sub">第 <b id="shopWave">1</b> 波已清空 · 物资已上架</div>
+        <div class="rule"><span>❦</span></div>
+      </div>
+
+      <div class="shop-columns">
+        <div class="shop-grid" id="shopGrid"></div>
+        <aside class="loadout-side">
+          <div class="side-title">佩 戴</div>
+          <div class="worn-bar mini" id="shopWornBar"></div>
+          <div class="side-title">背 包 <span class="side-count" id="shopBagCount">0/12</span></div>
+          <div class="bag-grid mini" id="shopBagGrid"></div>
+          <div class="side-title">羁 绊</div>
+          <div class="bond-bar mini" id="shopBondBar"></div>
+        </aside>
+      </div>
+
+      <div class="panel-foot shop-actions">
+        <div class="foot-left">
+          <button class="btn ghost" id="btnRerollShop">刷新 <span class="coin">◈</span><b id="shopRerollCost">20</b></button>
+          <button class="btn ghost" id="btnHeal">治疗 45% <span class="coin">◈</span><b id="healCost">30</b></button>
+          <button class="btn ghost" id="btnShopBag">整理背包</button>
+        </div>
+        <button class="btn primary" id="btnNextWave">进入第 <b id="nextWaveNum">2</b> 波 →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================= 背包 ======================= -->
+  <div id="screen-bag" class="screen">
+    <div class="panel bag-panel">
+      <div class="panel-head">
+        <div class="panel-title">行 囊</div>
+        <div class="panel-sub">武器与护甲需置于佩戴位方生效 · 饰品置于行囊中即生效</div>
+        <div class="rule"><span>❦</span></div>
+      </div>
+
+      <div class="bag-layout">
+        <section class="worn-side">
+          <div class="side-title">佩 戴 位</div>
+          <div class="worn-bar big" id="bagWornBar"></div>
+          <div class="worn-tip" id="wornTip">点击行囊中的武器 / 护甲可换上</div>
+          <div class="side-title">羁 绊</div>
+          <div class="bond-bar" id="bagBondBar"></div>
+        </section>
+
+        <section class="bag-side">
+          <div class="side-title">
+            行 囊
+            <span class="side-count" id="bagCount2">0 / 12</span>
+          </div>
+          <div class="bag-grid" id="bagGrid"></div>
+          <div class="bag-legend">
+            <span class="lg lg-on">● 生效中</span>
+            <span class="lg lg-off">○ 未生效</span>
+            <span class="lg">点击装备 · 右上角 ⊗ 丢弃</span>
+          </div>
+        </section>
+      </div>
+
+      <div class="panel-foot">
+        <button class="btn primary" id="btnCloseBag">返回战斗</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================= 暂停 ======================= -->
+  <div id="screen-pause" class="screen">
+    <div class="panel pause-panel">
+      <div class="panel-head">
+        <div class="panel-title">暂 停</div>
+        <div class="rule"><span>❦</span></div>
+      </div>
+      <div class="pause-stats" id="pauseStats"></div>
+      <div class="panel-foot">
+        <button class="btn ghost" id="btnOpenBag2">行囊</button>
+        <button class="btn primary" id="btnResume">继续</button>
+        <button class="btn ghost" id="btnQuit">放弃本局</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================= 死亡 ======================= -->
+  <div id="screen-death" class="screen">
+    <div class="panel death-panel">
+      <div class="death-seal">✝</div>
+      <div class="death-title">深 渊 吞 噬 了 你</div>
+      <div class="death-sub" id="deathSub">你坚持到了第 1 波</div>
+      <div class="rule"><span>❦</span></div>
+      <div class="death-stats" id="deathStats"></div>
+      <button class="btn primary big" id="btnRestart">再 来 一 次</button>
+    </div>
+  </div>
+
+  <div id="tipToast" class="toast"></div>
+</div>
+
+<!-- ============ 核心 ============ -->
+<script src="js/core/rng.js"></script>
+<script src="js/core/utils.js"></script>
+<script src="js/core/grid.js"></script>
+<script src="js/core/audio.js"></script>
+<!-- ============ 数据 ============ -->
+<script src="js/data/affixes.js"></script>
+<script src="js/data/items.js"></script>
+<script src="js/data/bonds.js"></script>
+<script src="js/data/characters.js"></script>
+<script src="js/data/perks.js"></script>
+<script src="js/data/enemies.js"></script>
+<script src="js/data/pixelart-actors.js"></script>
+<script src="js/data/pixelart-items.js"></script>
+<script src="js/data/pixelart-ground.js"></script>
+<!-- ============ 模拟 ============ -->
+<script src="js/sim/loot.js"></script>
+<script src="js/sim/combat.js"></script>
+<script src="js/sim/world.js"></script>
+<script src="js/sim/net.js"></script>
+<!-- ============ 渲染 / UI ============ -->
+<script src="js/render/pixels.js"></script>
+<script src="js/render/icons.js"></script>
+<script src="js/render/renderer.js"></script>
+<script src="js/ui/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
