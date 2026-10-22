@@ -94,6 +94,7 @@
         shopRerollCost: $('shopRerollCost'), healCost: $('healCost'),
         shopWornBar: $('shopWornBar'), shopBagGrid: $('shopBagGrid'),
         shopBagCount: $('shopBagCount'), shopBondBar: $('shopBondBar'),
+        shopGold: $('shopGold'),
 
         bagWornBar: $('bagWornBar'), bagGrid: $('bagGrid'),
         bagBondBar: $('bagBondBar'), bagCount2: $('bagCount2'),
@@ -434,8 +435,9 @@
         `<div>移速 <i>${Math.round(st.moveSpeed)}</i></div>`;
 
       const used = w.bagUsed();
-      this.el.bagCount.textContent = `${used}/12`;
-      this.el.bagToggle.classList.toggle('full', used >= 12);
+      const cap = w.bagCapacity();
+      this.el.bagCount.textContent = `${used}/${cap}`;
+      this.el.bagToggle.classList.toggle('full', used >= cap);
 
       this.updateWorn(w);
       this.updateBondBar(w);
@@ -531,18 +533,25 @@
       this.renderWornBar(this.el.bagWornBar, w, 'big');
       this.renderBagGrid(this.el.bagGrid, w, 'full');
       this.renderBondBar(this.el.bagBondBar, w);
-      this.el.bagCount2.textContent = `${w.bagUsed()} / 12`;
+      this.el.bagCount2.textContent = `${w.bagUsed()} / ${w.bagCapacity()}`;
       this.el.wornTip.textContent = w.bagHasSpace()
-        ? '点击行囊中的武器 / 护甲可换到佩戴位'
+        ? '点击行囊中的武器 / 护甲可换到佩戴位 · 每 5 级与部分装备会扩充行囊'
         : '行囊已满 —— 丢弃物品后才能拾取新的';
     }
 
     renderBagGrid(container, w, mode) {
       if (!container) return;
       const bag = w.player.bag;
+      const cap = w.bagCapacity();
+
+      if (mode !== 'mini') {
+        const cols = cap <= 12 ? 4 : cap <= 18 ? 5 : 6;
+        container.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+        container.style.maxWidth = cols * 104 + 'px';
+      }
       container.innerHTML = '';
 
-      for (let i = 0; i < bag.length; i++) {
+      for (let i = 0; i < cap; i++) {
         const it = bag[i];
         const d = document.createElement('div');
         d.dataset.idx = i;
@@ -598,6 +607,9 @@
             break;
           case 'bagFull':
             this.toast('行囊已满 · 无法拾取', 'bad');
+            break;
+          case 'bagShrink':
+            this.toast(`行囊缩小，${ev.count} 件装备折算 ◈${ev.gold}`, 'bad');
             break;
           case 'bagOverflow':
             this.toast(`行囊已满，${ev.count} 件装备折算 ◈${ev.gold}`, 'bad');
@@ -666,7 +678,8 @@
       this.el.nextWaveNum.textContent = w.wave + 1;
       this.el.shopRerollCost.textContent = w.shop.rerollCost;
       this.el.healCost.textContent = w.shop.healCost;
-      this.el.shopBagCount.textContent = `${w.bagUsed()}/12`;
+      this.el.shopBagCount.textContent = `${w.bagUsed()}/${w.bagCapacity()}`;
+      if (this.el.shopGold) this.el.shopGold.textContent = U.nf(p.gold);
 
       const grid = this.el.shopGrid;
       grid.innerHTML = '';

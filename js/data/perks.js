@@ -73,6 +73,9 @@
     { id: 'pierce', name: '贯穿', icon: '穿', tier: 'rare', max: 3,
       desc: '投射物额外穿透 <em>+1</em> 个敌人', apply: (s, m) => { m.pierceBonus = (m.pierceBonus || 0) + 1; } },
 
+    { id: 'deepbag', name: '扩容行囊', icon: '囊', tier: 'rare', max: 3,
+      desc: '行囊容量 <em>+2</em> 格', apply: (s) => { s.bagSpace += 2; } },
+
     { id: 'timelord', name: '时间扭曲', icon: '时', tier: 'rare', max: 3,
       desc: '冷却缩减 <em>+15%</em>，移速 <em>-5%</em>', apply: (s) => { s.cdr += 0.15; s.moveSpeed -= 0.05; } },
 

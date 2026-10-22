@@ -42,6 +42,8 @@
     { id: 'xp',      name: '经验',     stat: 'xpGain',     kind: 'pct',  min: 0.06, max: 0.16, weight: 6,  fmt: (v) => '+' + Math.round(v * 100) + '% 经验获取' },
     { id: 'gold',    name: '贪婪',     stat: 'goldGain',   kind: 'pct',  min: 0.08, max: 0.20, weight: 6,  fmt: (v) => '+' + Math.round(v * 100) + '% 金币获取' },
     { id: 'lifesteal', name: '吸血',   stat: 'lifesteal',  kind: 'pct',  min: 0.01, max: 0.025, weight: 5, fmt: (v) => '+' + (v * 100).toFixed(1) + '% 生命偷取' },
+    // 元属性：不参与数值浮动，固定 +1 格（见 rollAffix 的 fixed 分支）
+    { id: 'bagspace', name: '行囊',    stat: 'bagSpace',   kind: 'flat', min: 1, max: 1, weight: 4, fixed: true, fmt: () => '+1 行囊格' },
   ];
 
   RG.AFFIX_MAP = {};
@@ -75,10 +77,15 @@
     }
     const a = rng.weighted(pool, weights);
     // 基础浮动 0.82 ~ 1.0，越高稀有度越靠上限
-    const rollQuality = rng.float(0.8, 1.0) * (0.9 + rar.affixes * 0.03);
-    let v = rng.float(a.min, a.max) * rollQuality * rar.mult;
-    if (a.kind === 'pct') v = Math.round(v * 1000) / 1000;
-    else v = Math.round(v * 10) / 10;
+    let v;
+    if (a.fixed) {
+      v = a.min;                    // 固定值词条不做浮动/倍率放大
+    } else {
+      const rollQuality = rng.float(0.8, 1.0) * (0.9 + rar.affixes * 0.03);
+      v = rng.float(a.min, a.max) * rollQuality * rar.mult;
+      if (a.kind === 'pct') v = Math.round(v * 1000) / 1000;
+      else v = Math.round(v * 10) / 10;
+    }
     return {
       id: a.id,
       stat: a.stat,

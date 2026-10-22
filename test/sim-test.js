@@ -193,8 +193,9 @@ console.log('\n=== 6b. 背包容量与拾取规则 ===');
 {
   const world = new RG.World({ charId: 'rayn', seed: 9 });
   const p = world.player;
-  // 塞满背包
-  for (let i = 0; i < p.bag.length; i++) {
+  const cap0 = world.bagCapacity();
+  // 塞满「可用范围」
+  for (let i = 0; i < cap0; i++) {
     p.bag[i] = RG.makeItem('powerring', { wave: 2, rarity: 'common', rng });
   }
   assert(!world.bagHasSpace(), '背包应已满');
@@ -208,7 +209,36 @@ console.log('\n=== 6b. 背包容量与拾取规则 ===');
   assert(world.bagHasSpace(), '丢弃后应有空位');
   const ok2 = world.pickupItem(RG.makeItem('sword', { wave: 2, rarity: 'rare', rng }));
   assert(ok2 === true, '有空位时应能拾取');
-  console.log('  ✓ 满包拒收 / 丢弃后恢复拾取');
+  console.log(`  ✓ 满包(${cap0}格)拒收 / 丢弃后恢复拾取`);
+
+  // 容量成长：等级 / 特性 / 装备词条
+  {
+    const w3 = new RG.World({ charId: 'rayn', seed: 21 });
+    const p3 = w3.player;
+    const base = w3.bagCapacity();
+    p3.level = 5;
+    assert(w3.bagCapacity() === base + 1, `5 级应 +1 格，实际 ${w3.bagCapacity()}`);
+    p3.level = 11;
+    assert(w3.bagCapacity() === base + 2, `11 级应 +2 格`);
+    p3.perkCounts.deepbag = 2;          // 扩容行囊 ×2 → +4
+    w3.recomputeStats();
+    assert(w3.bagCapacity() === base + 6, `扩容特性未生效，实际 ${w3.bagCapacity()}`);
+    // 装备词条 +1
+    p3.bag[0] = RG.makeItem('powerring', { wave: 3, rarity: 'common', rng });
+    p3.bag[0].stats.bagSpace = 1;
+    w3.recomputeStats();
+    assert(w3.bagCapacity() === base + 7, `装备行囊词条未生效，实际 ${w3.bagCapacity()}`);
+    // 上限收敛
+    p3.level = 99;
+    p3.perkCounts.deepbag = 3;
+    for (let i = 0; i < 24; i++) {
+      if (!p3.bag[i]) p3.bag[i] = RG.makeItem('powerring', { wave: 3, rarity: 'common', rng });
+      p3.bag[i].stats.bagSpace = 3;
+    }
+    w3.recomputeStats();
+    assert(w3.bagCapacity() <= RG.BAG_MAX, `容量应封顶在 ${RG.BAG_MAX}，实际 ${w3.bagCapacity()}`);
+    console.log(`  ✓ 容量成长与封顶（基础 ${base} → 上限 ${RG.BAG_MAX}）`);
+  }
 
   // 饰品进包即生效，武器进包不生效
   const w2 = new RG.World({ charId: 'rayn', seed: 11 });

@@ -16,7 +16,7 @@
   const MAX_ENEMIES = 220;       // 性能上限
   const MAX_PARTICLES = 700;
   const MAX_TEXTS = 140;
-  const BAG_SIZE = (RG.BAG_SIZE = RG.BAG_SIZE || 12); // 行囊格数
+  const BAG_SIZE = RG.BAG_MAX || 24;   // 行囊数组按上限预分配，实际可用格数见 bagCapacity()
 
   let _eid = 0;
 
@@ -134,15 +134,65 @@
       return out;
     }
 
-    bagUsed() {
-      let n = 0;
+    /**
+     * 当前行囊可用格数：
+     *   基础 12 + 每 5 级 +1 + 「扩容」特性 + 装备的行囊词条
+     */
+    bagCapacity() {
+      const p = this.player;
+      const base = RG.BAG_BASE || 12;
+      const max = RG.BAG_MAX || 24;
+      const per = RG.BAG_PER_LEVEL || 5;
+      const lvBonus = Math.floor(p.level / per);   // 5/10/15 级各解锁 1 格
+      const eqBonus = Math.round(p.stats.bagSpace || 0);
+      return Math.min(max, base + lvBonus + eqBonus);
+    }
+
+    /** 可用范围内第一个空位，没有则 -1 */
+    firstFreeSlot() {
       const bag = this.player.bag;
-      for (let i = 0; i < bag.length; i++) if (bag[i]) n++;
+      const cap = this.bagCapacity();
+      for (let i = 0; i < cap; i++) if (!bag[i]) return i;
+      return -1;
+    }
+
+    bagUsed() {
+      const bag = this.player.bag;
+      const cap = this.bagCapacity();
+      let n = 0;
+      for (let i = 0; i < cap; i++) if (bag[i]) n++;
       return n;
     }
 
     bagHasSpace() {
-      return this.player.bag.indexOf(null) >= 0;
+      return this.firstFreeSlot() >= 0;
+    }
+
+    /**
+     * 容量可能因为丢装备/换装而缩小：把超出可用范围的东西
+     * 挪回空位，实在没地方就折算成金币，避免"物品消失"。
+     */
+    normalizeBag() {
+      const p = this.player;
+      const cap = this.bagCapacity();
+      let count = 0, gold = 0;
+      for (let i = cap; i < p.bag.length; i++) {
+        const it = p.bag[i];
+        if (!it) continue;
+        const free = this.firstFreeSlot();
+        if (free >= 0) {
+          p.bag[free] = it;
+        } else {
+          gold += Math.max(1, Math.round(it.price * 0.3));
+          count++;
+        }
+        p.bag[i] = null;
+      }
+      if (count > 0) {
+        p.gold += gold;
+        this.totalGold += gold;
+        this.events.push({ type: 'bagShrink', count, gold });
+      }
     }
 
     /* ================== 属性重算 ================== */
@@ -162,7 +212,7 @@
       const defaults = {
         maxHp: 100, armor: 0, moveSpeed: 180, attackSpeed: 0, damage: 1,
         crit: 0, critMult: 1.5, pickup: 1, luck: 0, cdr: 0, area: 1,
-        regen: 0, xpGain: 0, goldGain: 0, thorns: 0, lifesteal: 0,
+        regen: 0, xpGain: 0, goldGain: 0, thorns: 0, lifesteal: 0, bagSpace: 0,
       };
       for (const k in defaults) if (s[k] === undefined) s[k] = defaults[k];
 
@@ -214,6 +264,8 @@
       if (opts && opts.heal && ctx.healOnApply) {
         p.hp = Math.min(s.maxHp, p.hp + ctx.healOnApply);
       }
+      // 容量可能变化（特性/词条），把越界物品收回来
+      this.normalizeBag();
       return s;
     }
 
@@ -796,7 +848,7 @@
      */
     pickupItem(item) {
       const p = this.player;
-      const idx = p.bag.indexOf(null);
+      const idx = this.firstFreeSlot();
       if (idx < 0) {
         this.warnBagFull();
         return false;
@@ -827,6 +879,7 @@
     /** 把背包里的武器/防具换到佩戴位（与原佩戴位互换） */
     equipFromBag(idx) {
       const p = this.player;
+      if (idx < 0 || idx >= this.bagCapacity()) return false;
       const it = p.bag[idx];
       if (!it) return false;
       if (it.slot !== 'weapon' && it.slot !== 'armor') return false;
@@ -848,6 +901,7 @@
     /** 丢弃背包物品，返还少量金币 */
     dropFromBag(idx) {
       const p = this.player;
+      if (idx < 0 || idx >= this.bagCapacity()) return false;
       const it = p.bag[idx];
       if (!it) return false;
       const refund = Math.max(1, Math.round(it.price * 0.25));
@@ -863,7 +917,8 @@
     sellWorstFromBag(keepSlot) {
       const p = this.player;
       let worst = -1, worstScore = Infinity;
-      for (let i = 0; i < p.bag.length; i++) {
+      const cap = this.bagCapacity();
+      for (let i = 0; i < cap; i++) {
         const it = p.bag[i];
         if (!it) continue;
         if (keepSlot && it.slot !== keepSlot) continue;
