@@ -276,6 +276,7 @@ rogue_game/
 │   └── main.js                引导 / 输入 / 主循环
 └── test/
     ├── sim-test.js            无浏览器回归测试
+    ├── ui-state-test.js       界面状态机回归（弹层走位）
     ├── browser-check.js       真实 Chrome（CDP）冒烟 + 截图
     └── gallery.html           像素贴图总览页
 ```
@@ -286,8 +287,13 @@ rogue_game/
 
 ```bash
 node test/sim-test.js          # 逻辑回归（无需浏览器）
+node test/ui-state-test.js     # 界面状态机回归（弹层走位）
 node test/browser-check.js combat 7   # 真实浏览器跑一遍并截图
 ```
+
+`ui-state-test.js` 专门盯着「弹层打开 / 关闭后 phase 是否回到原处」——
+这类 bug 的后果是模拟层被永久卡住，表现就是画面静止、点击无反应。
+覆盖：战斗中开合行囊、升级界面开合行囊、商店开合行囊、暂停开合行囊、死亡后拦截。
 
 `sim-test.js` 覆盖：
 

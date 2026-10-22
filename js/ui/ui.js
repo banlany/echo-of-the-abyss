@@ -65,6 +65,7 @@
       this._bondKey = '';
       this._toastT = 0;
       this.bagReturn = 'combat';
+      this._lastLevelUp = null;
 
       this.el = {
         hud: $('hud'),
@@ -212,8 +213,17 @@
     openBag(from) {
       const w = this.g.world;
       if (!w || w.phase === 'dead') return;
-      this.bagReturn = from || 'combat';
+
+      // 记住是从哪儿打开的，关闭时要原路返回
+      if (w.phase === 'levelup') {
+        this.bagReturn = 'levelup';
+      } else if (w.phase === 'shop') {
+        this.bagReturn = 'shop';
+      } else {
+        this.bagReturn = from || 'combat';
+      }
       if (w.phase === 'combat') w.paused = true;
+
       this.renderBag();
       this.showScreen('screenBag');
     }
@@ -221,24 +231,39 @@
     closeBag() {
       const w = this.g.world;
       if (!w) return;
+
+      // 商店阶段：回到货架
       if (this.bagReturn === 'shop' && w.phase === 'shop') {
         this.renderShop();
         this.showScreen('screenShop');
         return;
       }
+      // 从暂停菜单进来的：直接回到暂停界面
+      // （不能调 this.g.pause()，它会被 paused 守卫挡掉）
       if (this.bagReturn === 'pause' && w.phase === 'combat') {
-        this.g.pause();
+        this.showPause(w);
         return;
       }
-      if (w.phase === 'combat') {
-        w.paused = false;
-        this.hideAll();
-        this.el.hud.classList.remove('hidden');
-        this.updateHUD(w);
-      } else {
-        this.hideAll();
-        this.el.hud.classList.remove('hidden');
+      // 升级阶段：回到三选一（此时模拟层正卡在 levelup，必须恢复界面）
+      if (w.phase === 'levelup') {
+        if (this._lastLevelUp) {
+          this.showLevelUp(this._lastLevelUp);
+        } else {
+          this.hideAll();
+          this.el.hud.classList.remove('hidden');
+        }
+        return;
       }
+      // 已死亡：回到结算
+      if (w.phase === 'dead') {
+        this.showDeath(w);
+        return;
+      }
+      // 战斗 / 其他：恢复战斗
+      if (w.phase === 'combat') w.paused = false;
+      this.hideAll();
+      this.el.hud.classList.remove('hidden');
+      this.updateHUD(w);
     }
 
     onBagClick(e, where) {
@@ -594,6 +619,7 @@
 
     /* ---------------- 升级 ---------------- */
     showLevelUp(ev) {
+      this._lastLevelUp = ev;   // 供「打开行囊后返回」重绘
       const p = this.g.world.player;
       this.el.lvlBadge.textContent = ev.level;
       this.el.perkRerollCost.textContent = this.perkRerollCost;
@@ -616,6 +642,7 @@
         `;
         card.addEventListener('click', () => {
           RG.Audio.buy();
+          this._lastLevelUp = null;
           this.hideAll();
           this.g.world.choosePerk(perk.id);
           if (this.g.world.phase === 'combat') {
